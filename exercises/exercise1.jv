@@ -3,6 +3,7 @@ pipeline AirportsPipeline {
 
 	// Pipeline
 	AirportsExtractor 
+		-> AirportsTextFileInterpreter
 		-> AirportsCSVInterpreter
 		-> AirportsTableInterpreter
 		-> AirportsDatabaseLoader;
@@ -12,7 +13,9 @@ pipeline AirportsPipeline {
 		url: 'https://opendata.rhein-kreis-neuss.de/api/explore/v2.1/catalog/datasets/rhein-kreis-neuss-flughafen-weltweit/exports/csv?lang=en&timezone=Europe%2FBerlin&use_labels=true&delimiter=%3B
 ';
 	}
-	
+	// Text Interpreter
+	block AirportsTextFileInterpreter oftype TextFileInterpreter { }
+
 	// CSV Interpreter
 	block AirportsCSVInterpreter oftype CSVInterpreter {
 		delimiter: ';';
@@ -31,6 +34,7 @@ pipeline AirportsPipeline {
             "Latitude" oftype decimal,
             "Longitude" oftype decimal,
             "Altitude" oftype integer,
+
 		];
 	}
 
