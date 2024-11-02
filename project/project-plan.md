@@ -17,7 +17,7 @@ I will search for the dataset and perform initial preprocessing, such as elimina
 
 Data.gov Motor Vehicle Crash Data: The U.S. government's data portal offers various motor vehicle accident datasets.
 
-* Metadata URL: (https://catalog.data.gov/dataset/motor-vehicle-crashes)
+* Metadata URL: (https://catalog.data.gov/dataset/)
 * Data Type: CSV
 
 
