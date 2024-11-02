@@ -5,8 +5,11 @@ Analyzing the Changing Patterns and Relationship Between Road Accidents and Weat
 ## Main Question
 
 How the rate of road accident increasing day by day?
+
 How does visibility affect likelihood of accidents?
+
 How do traffic distruptions affect the total number of accidents?
+
 Is there any realtion between road accident and weather?
 
 
