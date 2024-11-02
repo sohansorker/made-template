@@ -1,0 +1,69 @@
+pipeline TreePipeline {
+
+    // Pipeline Workflow
+    TreeExtractor 
+        -> TreeTextFileInterpreter
+        -> TreeCSVInterpreter
+        -> ColumnRemover
+        -> DataCleaner
+        -> TreeDatabaseLoader;
+    
+    // Fetch CSV file from the specified URL
+    block TreeExtractor oftype HttpExtractor {
+        url: 'https://opendata.rhein-kreis-neuss.de/api/v2/catalog/datasets/stadt-neuss-herbstpflanzung-2023/exports/csv';
+    }
+
+    // Interpret data as a text file
+    block TreeTextFileInterpreter oftype TextFileInterpreter { }
+
+    // Interpret data as CSV with semicolon delimiter
+    block TreeCSVInterpreter oftype CSVInterpreter {
+        delimiter: ';';
+    }
+
+    // Remove unnecessary columns
+    block ColumnRemover oftype ColumnDeleter {
+        delete: ['baumart_deutsch'];
+    }
+
+    // Define table structure and apply data constraints
+    block DataCleaner oftype TableInterpreter {
+        header: true;
+        columns: [
+            'lfd_nr' oftype INTEGER,
+            'stadtteil' oftype VogelsangConstraint,
+            'standort' oftype TEXT,
+            'baumart_botanisch' oftype TEXT,
+            'id' oftype GeoConstraint,
+            'baumfamilie' oftype TEXT
+        ];
+    }
+
+    // Load data into an SQLite database
+    block TreeDatabaseLoader oftype SQLiteLoader {
+        table: 'trees';
+        file: './trees.sqlite';
+    }
+
+    // Define constraints for "stadtteil" to allow only values starting with "Vogelsang"
+    constraint VogelsangRegex oftype RegexConstraint {
+        regex: /^Vogelsang/;
+    }
+
+    valuetype VogelsangConstraint oftype TEXT {
+        constraints: [
+            VogelsangRegex,
+        ];
+    }
+
+    // Define constraints for valid geolocation format in "id" column
+    constraint GeoRegex oftype RegexConstraint {
+        regex: /([0-9]{1,3}\.[0-9]+),\s*([0-9]{1,3}\.[0-9]+)/;
+    }
+
+    valuetype GeoConstraint oftype TEXT {
+        constraints: [
+            GeoRegex,
+        ];
+    }
+}
