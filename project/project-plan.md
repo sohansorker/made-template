@@ -1,29 +1,26 @@
 # Project Plan
 
 ## Title
-<!-- Give your project a short title. -->
-Awesome MADE project.
-
+Analyzing the Changing Patterns and Relationship Between Road Accidents and Weather
 ## Main Question
 
-<!-- Think about one main question you want to answer based on the data. -->
-1. Does writing an example question help students write better project plans?
+How the rate of road accident increasing day by day?
+How does visibility affect likelihood of accidents?
+How do traffic distruptions affect the total number of accidents?
+Is there any realtion between road accident and weather?
+
 
 ## Description
 
-<!-- Describe your data science project in max. 200 words. Consider writing about why and how you attempt it. -->
-XY is an important problem, because... This projects analyzes XY, using method A. The results can give insights into...
-
+I will search for the dataset and perform initial preprocessing, such as eliminating null values.
 ## Datasources
 
-<!-- Describe each datasources you plan to use in a section. Use the prefic "DatasourceX" where X is the id of the datasource. -->
+Data.gov Motor Vehicle Crash Data: The U.S. government's data portal offers various motor vehicle accident datasets.
 
-### Datasource1: ExampleSource
-* Metadata URL: https://mobilithek.info/offers/-6901989592576801458
-* Data URL: https://raw.githubusercontent.com/od-ms/radverkehr-zaehlstellen/main/100035541/2019-01.csv
+* Metadata URL: (https://catalog.data.gov/dataset/motor-vehicle-crashes)
 * Data Type: CSV
 
-Short description of the DataSource.
+
 
 ## Work Packages
 
