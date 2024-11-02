@@ -23,7 +23,7 @@ pipeline TreePipeline {
 
     // Remove unnecessary columns
     block ColumnRemover oftype ColumnDeleter {
-        delete: ['baumart_deutsch'];
+        delete: [column E];
     }
 
     // Define table structure and apply data constraints
