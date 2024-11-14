@@ -62,7 +62,7 @@ class Pipeline:
 
     def collect_additional_data(self):
         # collect additional data from another URL
-        url2 = "https://www-genesis.destatis.de/genesisWS/rest/2020/data/tablefile?username=DE9WS28QIO&password=Sohanhasan@123&name=46241-0021&area=all&compress=false&transpose=true&startyear=2018&endyear=2020&language=en"
+        url2 = "https://data.cityofnewyork.us/api/views/h9gi-nx95/rows.csv?accessType=DOWNLOAD"
         df2 = pd.read_csv(url2, sep=';', skiprows=6, skipfooter=3, engine='python')
 
         # Deleting rows 0 and 2
@@ -70,37 +70,11 @@ class Pipeline:
 
         df2 = df2.reset_index(drop=True)
 
-        # Always keep the first two columns
-        always_keep = df2.iloc[:, :2]
-
-        # From the 3rd column onward, apply the condition
-        # Check for columns where both the first and second rows are 'Total'
-        condition_columns = df2.iloc[:, 2:]
-        mask = (condition_columns.iloc[0] == 'Total') & (condition_columns.iloc[1] == 'Total')
-
-        # Filter the DataFrame to keep only those columns
-        filtered_columns = condition_columns.loc[:, mask]
-
-        # Concatenate the always kept columns with the conditionally kept columns
-        final_df = pd.concat([always_keep, filtered_columns], axis=1)
-
-        # Deleting rows 0 and 2
-        final_df = final_df.drop([0, 1])
-        final_df = final_df.reset_index(drop=True)
-
-        final_df.columns = [col.split('.')[0] for col in final_df.columns]
-
-        final_df = final_df.rename(columns={
-            'Unnamed: 0': 'Year',  # New name for 'Unnamed: 0'
-            'Unnamed: 1': 'Month'   # New name for 'Unnamed: 1'
-        })
-
-        final_df['Year'] = final_df['Year'].astype(int)
-
+       
 
 
         # Store the additional data in the same database
-        final_df.to_sql('AccData', self.engine, if_exists='replace', index=False)
+        df2.to_sql('AccData', self.engine, if_exists='replace', index=False)
         self.engine.dispose()
         
 
