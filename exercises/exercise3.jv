@@ -3,7 +3,7 @@ pipeline WorldBankDatasetPipeline {
     WorldBankDataExtractor
         -> ExcelInterpreter
         -> SheetSelector
-        -> CellRangeSelector
+        -> RangeSelector
         -> ColumnRenamer
         -> DataValidator
         -> BondIssuanceLoader
@@ -15,33 +15,33 @@ pipeline WorldBankDatasetPipeline {
     }
 
     // Interpret the file as an Excel workbook
-    block ExcelInterpreter oftype SpreadsheetInterpreter {}
+    block ExcelInterpreter oftype ExcelFileInterpreter {}
 
     // Select the specific sheet "Figure S5.1.2"
-    block SheetSelector oftype WorksheetSelector {
+    block SheetSelector oftype SheetSelector {
         sheet: "Figure S5.1.2";
     }
 
     // Select the range containing the table (P2:S45)
-    block CellRangeSelector oftype RangeSelector {
-        range: P2:S45;
+    block RangeSelector oftype CellRangeSelector {
+        select: range P2:S45;
     }
 
     // Rename the columns as per requirements
     block ColumnRenamer oftype ColumnTransformer {
-        transformations: [
-            rename "ISO3" to "Country Code",
-            rename "GDP per capita (US$, thousands)" to "GDP per Capita",
-            rename "Share of government sustainable bonds" to "Bond Issuance Share"
+        transforms: [
+            rename column "ISO3" to "Country Code",
+            rename column "GDP per capita (US$, thousands)" to "GDP per Capita",
+            rename column "Share of government sustainable bonds" to "Bond Issuance Share"
         ];
     }
 
-    // Validate the data
+    // Validate the data and drop invalid rows
     block DataValidator oftype RowFilter {
         rules: [
-            "Country Code" is CountryCodeAlpha3 and not empty,
-            "GDP per Capita" is decimal and not empty and greater than 0,
-            "Bond Issuance Share" is decimal and not empty and between 0 and 1
+            "Country Code" is CountryCodeAlpha3,
+            "GDP per Capita" is decimal and greater than 0,
+            "Bond Issuance Share" is decimal and between 0 and 1
         ];
     }
 
@@ -49,9 +49,9 @@ pipeline WorldBankDatasetPipeline {
     block BondIssuanceLoader oftype SQLiteLoader {
         table: "bondIssuance";
         file: "country-stats.sqlite";
-        columns: [
-            "Country Code" as text,
-            "Bond Issuance Share" as float
+        mappings: [
+            column "Country Code" to TEXT,
+            column "Bond Issuance Share" to FLOAT
         ];
     }
 
@@ -59,9 +59,9 @@ pipeline WorldBankDatasetPipeline {
     block GDPPerCapitaLoader oftype SQLiteLoader {
         table: "gdpPerCapita";
         file: "country-stats.sqlite";
-        columns: [
-            "Country Code" as text,
-            "GDP per Capita" as float
+        mappings: [
+            column "Country Code" to TEXT,
+            column "GDP per Capita" to FLOAT
         ];
     }
 }
