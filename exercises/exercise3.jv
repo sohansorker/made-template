@@ -1,6 +1,6 @@
 pipeline WorldBankPipeline {
 
-    // Primary Data Extraction and Processing Flow
+    //  Data Extraction and Processing Flow
     DataDownloader
         -> ExcelFileProcessor
         -> TargetSheetSelector
@@ -13,25 +13,25 @@ pipeline WorldBankPipeline {
         -> BondTableProcessor
         -> BondDataSaver;
 
-    // Step 1: Download the dataset from the specified source
+    // Download the dataset 
     block DataDownloader oftype HttpExtractor {
         url: "https://thedocs.worldbank.org/en/doc/7d852628d96b9411d43e5d36d5dff941-0050062022/original/Graphs-Chapter-5-02082022.xlsx";
     }
 
-    // Step 2: Process the XLSX file into a usable workbook
+   
     block ExcelFileProcessor oftype XLSXInterpreter {}
 
-    // Step 3: Focus on the relevant sheet named "Figure S5.1.2"
+  
     block TargetSheetSelector oftype SheetPicker {
         sheetName: "Figure S5.1.2";
     }
 
-    // Step 4: Narrow down the data to the range P2:S45
+    
     block DataRangeSelector oftype CellRangeSelector {
         select: range P2:S45;
     }
 
-    // Step 5: Update headers to be meaningful and aligned with requirements
+    //  Update headers 
     block ColumnHeaderUpdater oftype CellWriter {
         at: range P2:S2;  
         write: [
@@ -42,7 +42,7 @@ pipeline WorldBankPipeline {
         ];
     }
 
-    // Step 6: Process the GDP-related data
+    //  Process the GDP-related data
     block GDPTableProcessor oftype TableInterpreter {
         header: true;
         columns: [
@@ -51,7 +51,7 @@ pipeline WorldBankPipeline {
         ];
     }
 
-    // Step 7: Process the Bond Issuance Share data
+    // Process the Bond Issuance Share data
     block BondTableProcessor oftype TableInterpreter {
         header: true;
         columns: [
@@ -60,13 +60,13 @@ pipeline WorldBankPipeline {
         ];
     }
 
-    // Step 8: Save GDP data into a SQLite table
+    
     block GDPDataSaver oftype SQLiteLoader {
         table: "gdpPerCapita";
         file: "./country-stats.sqlite";
     }
 
-    // Step 9: Save Bond Issuance Share data into a separate SQLite table
+    
     block BondDataSaver oftype SQLiteLoader {
         table: "bondIssuance";
         file: "./country-stats.sqlite";
