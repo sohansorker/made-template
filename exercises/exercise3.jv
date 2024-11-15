@@ -1,67 +1,97 @@
-pipeline WorldBankDatasetPipeline {
+pipeline WorldBankPipeline {
 
-    WorldBankDataExtractor
-        -> SpreadsheetInterpreter
-        -> WorksheetSelector
-        -> CellRangeSelector
-        -> ColumnNameTransformer
-        -> DataRowValidator
-        -> BondIssuanceLoader
-        -> GDPPerCapitaLoader;
+    // Bond Issuance and GDP data pipeline
+    WorldBankExtractor
+        -> WorldBankXLSXInterpreter
+        -> WorldBankSheetPicker
+        -> WorldBankHeaderWriter
+        -> WorldBankRangeSelector
+        -> WorldBankGDPTableInterpreter
+        -> WorldBankGDPDataLoader;
 
-    // Download the Excel file from the URL
-    block WorldBankDataExtractor oftype HttpExtractor {
+    WorldBankRangeSelector  
+        -> WorldBankBondTableInterpreter
+        -> WorldBankBondDataLoader;
+
+    // Extract Excel file from source
+    block WorldBankExtractor oftype HttpExtractor {
         url: "https://thedocs.worldbank.org/en/doc/7d852628d96b9411d43e5d36d5dff941-0050062022/original/Graphs-Chapter-5-02082022.xlsx";
     }
 
-    // Interpret the file as a spreadsheet
-    block SpreadsheetInterpreter oftype ExcelFileInterpreter {}
+    // Interpret the XLSX file
+    block WorldBankXLSXInterpreter oftype XLSXInterpreter {}
 
-    // Select the specific worksheet "Figure S5.1.2"
-    block WorksheetSelector oftype SheetSelector {
-        sheet: "Figure S5.1.2";
+    // Select the sheet "Figure S5.1.2"
+    block WorldBankSheetPicker oftype SheetPicker {
+        sheetName: "Figure S5.1.2";
     }
 
     // Select the data range P2:S45
-    block CellRangeSelector oftype RangeSelector {
-        range: P2:S45;
+    block WorldBankRangeSelector oftype CellRangeSelector {
+        select: range P2:S45;
     }
 
-    // Rename columns as required
-    block ColumnNameTransformer oftype ColumnTransformer {
-        rename: [
-            "ISO3" to "Country Code",
-            "GDP per capita (US$, thousands)" to "GDP per Capita",
-            "Share of government sustainable bonds" to "Bond Issuance Share"
+    // Write custom headers
+    block WorldBankHeaderWriter oftype CellWriter {
+        at: range P2:S2;  
+        write: [
+            "Country Code",
+            "Economy",
+            "GDP per Capita",
+            "Bond Issuance Share"
         ];
     }
 
-    // Validate rows with specific rules
-    block DataRowValidator oftype RowFilter {
-        rules: [
-            "Country Code" is CountryCodeAlpha3,
-            "GDP per Capita" is decimal and greater than 0,
-            "Bond Issuance Share" is decimal and between 0 and 1
-        ];
-    }
-
-    // Load data into SQLite table for bond issuance share
-    block BondIssuanceLoader oftype SQLiteLoader {
-        table: "bondIssuance";
-        file: "./country-stats.sqlite";
+    // Interpret table for GDP per Capita
+    block WorldBankGDPTableInterpreter oftype TableInterpreter {
+        header: true;
         columns: [
-            "Country Code" as text,
-            "Bond Issuance Share" as float
+            "Country Code" oftype CountryCodeValidation,
+            "GDP per Capita" oftype GDPValidation
         ];
     }
 
-    // Load data into SQLite table for GDP per capita
-    block GDPPerCapitaLoader oftype SQLiteLoader {
+    // Interpret table for Bond Issuance Share
+    block WorldBankBondTableInterpreter oftype TableInterpreter {
+        header: true;
+        columns: [
+            "Country Code" oftype CountryCodeValidation,
+            "Bond Issuance Share" oftype BondShareValidation
+        ];
+    }
+
+    // Load GDP data into SQLite
+    block WorldBankGDPDataLoader oftype SQLiteLoader {
         table: "gdpPerCapita";
         file: "./country-stats.sqlite";
-        columns: [
-            "Country Code" as text,
-            "GDP per Capita" as float
-        ];
+    }
+
+    // Load Bond Issuance data into SQLite
+    block WorldBankBondDataLoader oftype SQLiteLoader {
+        table: "bondIssuance";
+        file: "./country-stats.sqlite";
     }
 }
+
+// Custom validation types
+valuetype CountryCodeValidation oftype text {
+    constraints: [ValidCountryCode];
+}
+
+valuetype GDPValidation oftype decimal {
+    constraints: [PositiveDecimal];
+}
+
+valuetype BondShareValidation oftype decimal {
+    constraints: [DecimalBetweenZeroAndOne];
+}
+
+// Constraints for validation
+constraint ValidCountryCode on CountryCodeValidation:
+    value matches /^[A-Za-z]{3}$/;
+
+constraint PositiveDecimal on GDPValidation:
+    value > 0;
+
+constraint DecimalBetweenZeroAndOne on BondShareValidation:
+    value >= 0 and value <= 1;
