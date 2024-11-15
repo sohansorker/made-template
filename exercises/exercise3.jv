@@ -29,7 +29,7 @@ pipeline GoodsPipeline {
 
     // Remove unnecessary rows from the dataset
     block GoodsRowRemover oftype RowDeleter {
-        delete: [1, 2, 3, 4, 5, 6, 7, 41338, 41339];
+        delete: [row 1, row 2, row 3, row 4, row 5, row 6, row 7, row 41338, row 41339];
     }
 
     // Select the desired range of cells for further processing
@@ -39,13 +39,13 @@ pipeline GoodsPipeline {
 
     // Add headers for the transported goods data
     block TransportedGoodsHeaderAdder oftype CellWriter {
-        at: A1:E1;
+        at: cell A1:E1;
         write: ["year", "month", "goods_id", "goods_name", "goods_source"];
     }
 
     // Add headers for the quantity and total columns
     block QuantityNameHeaderAdder oftype CellWriter {
-        at: AT1:AU1;
+        at: cell AT1:AU1;
         write: ["abroad", "total"];
     }
 
@@ -53,13 +53,13 @@ pipeline GoodsPipeline {
     block GoodsTableProcessor oftype TableInterpreter {
         header: true;
         columns: [
-            "year": PositiveInteger,
-            "month": GermanMonth,
-            "goods_id": NST7,
-            "goods_name": TextType,
-            "goods_source": TextType,
-            "abroad": PositiveInteger,
-            "total": PositiveInteger
+            {name: "year", type: PositiveInteger},
+            {name: "month", type: GermanMonth},
+            {name: "goods_id", type: NST7},
+            {name: "goods_name", type: TextType},
+            {name: "goods_source", type: TextType},
+            {name: "abroad", type: PositiveInteger},
+            {name: "total", type: PositiveInteger}
         ];
     }
 
@@ -99,7 +99,7 @@ pipeline GoodsPipeline {
     block TransformMonthToUppercase oftype TableTransformer {
         inputColumns: ["month"];
         outputColumn: "month";
-        use TransformMonth;
+        use: TransformMonth;
     }
 
     // Transform "Februar" to uppercase
@@ -111,7 +111,7 @@ pipeline GoodsPipeline {
     block TransformFebruaryToUppercase oftype TableTransformer {
         inputColumns: ["month"];
         outputColumn: "month";
-        use TransformFebruary;
+        use: TransformFebruary;
     }
 
     // Load the cleaned and transformed data into a SQLite database
