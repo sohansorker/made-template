@@ -48,7 +48,7 @@ pipeline WorldBankDatasetPipeline {
     // Load data into SQLite table for bond issuance share
     block BondIssuanceLoader oftype SQLiteLoader {
         table: "bondIssuance";
-        file: "country-stats.sqlite";
+        file: "./country-stats.sqlite";
         columns: [
             "Country Code" as text,
             "Bond Issuance Share" as float
@@ -58,7 +58,7 @@ pipeline WorldBankDatasetPipeline {
     // Load data into SQLite table for GDP per capita
     block GDPPerCapitaLoader oftype SQLiteLoader {
         table: "gdpPerCapita";
-        file: "country-stats.sqlite";
+        file: "./country-stats.sqlite";
         columns: [
             "Country Code" as text,
             "GDP per Capita" as float
