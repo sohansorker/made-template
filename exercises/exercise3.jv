@@ -1,43 +1,43 @@
 pipeline WorldBankDatasetPipeline {
 
     WorldBankDataExtractor
-        -> ExcelInterpreter
-        -> SheetSelector
-        -> RangeSelector
-        -> ColumnRenamer
-        -> DataValidator
+        -> SpreadsheetInterpreter
+        -> WorksheetSelector
+        -> CellRangeSelector
+        -> ColumnNameTransformer
+        -> DataRowValidator
         -> BondIssuanceLoader
         -> GDPPerCapitaLoader;
 
-    // Extract the Excel file from the provided URL
+    // Download the Excel file from the URL
     block WorldBankDataExtractor oftype HttpExtractor {
         url: "https://thedocs.worldbank.org/en/doc/7d852628d96b9411d43e5d36d5dff941-0050062022/original/Graphs-Chapter-5-02082022.xlsx";
     }
 
-    // Interpret the file as an Excel workbook
-    block ExcelInterpreter oftype ExcelFileInterpreter {}
+    // Interpret the file as a spreadsheet
+    block SpreadsheetInterpreter oftype ExcelFileInterpreter {}
 
-    // Select the specific sheet "Figure S5.1.2"
-    block SheetSelector oftype SheetSelector {
+    // Select the specific worksheet "Figure S5.1.2"
+    block WorksheetSelector oftype SheetSelector {
         sheet: "Figure S5.1.2";
     }
 
-    // Select the range containing the table (P2:S45)
-    block RangeSelector oftype CellRangeSelector {
-        select: range P2:S45;
+    // Select the data range P2:S45
+    block CellRangeSelector oftype RangeSelector {
+        range: P2:S45;
     }
 
-    // Rename the columns as per requirements
-    block ColumnRenamer oftype ColumnTransformer {
-        transforms: [
-            rename column "ISO3" to "Country Code",
-            rename column "GDP per capita (US$, thousands)" to "GDP per Capita",
-            rename column "Share of government sustainable bonds" to "Bond Issuance Share"
+    // Rename columns as required
+    block ColumnNameTransformer oftype ColumnTransformer {
+        rename: [
+            "ISO3" to "Country Code",
+            "GDP per capita (US$, thousands)" to "GDP per Capita",
+            "Share of government sustainable bonds" to "Bond Issuance Share"
         ];
     }
 
-    // Validate the data and drop invalid rows
-    block DataValidator oftype RowFilter {
+    // Validate rows with specific rules
+    block DataRowValidator oftype RowFilter {
         rules: [
             "Country Code" is CountryCodeAlpha3,
             "GDP per Capita" is decimal and greater than 0,
@@ -45,23 +45,23 @@ pipeline WorldBankDatasetPipeline {
         ];
     }
 
-    // Load Bond Issuance Share data into SQLite
+    // Load data into SQLite table for bond issuance share
     block BondIssuanceLoader oftype SQLiteLoader {
         table: "bondIssuance";
         file: "country-stats.sqlite";
-        mappings: [
-            column "Country Code" to TEXT,
-            column "Bond Issuance Share" to FLOAT
+        columns: [
+            "Country Code" as text,
+            "Bond Issuance Share" as float
         ];
     }
 
-    // Load GDP per Capita data into SQLite
+    // Load data into SQLite table for GDP per capita
     block GDPPerCapitaLoader oftype SQLiteLoader {
         table: "gdpPerCapita";
         file: "country-stats.sqlite";
-        mappings: [
-            column "Country Code" to TEXT,
-            column "GDP per Capita" to FLOAT
+        columns: [
+            "Country Code" as text,
+            "GDP per Capita" as float
         ];
     }
 }
