@@ -1,122 +1,67 @@
-pipeline GoodsPipeline {
+pipeline WorldBankDatasetPipeline {
 
-    GoodsExtractor
-        -> GoodsTextFileInterpreter
-        -> GoodsCSVInterpreter
-        -> GoodsRowRemover
-        -> GoodsRangeSelector
-        -> TransportedGoodsHeaderAdder
-        -> QuantityNameHeaderAdder
-        -> GoodsTableProcessor
-        -> MonthToUppercaseTransformer
-        -> FebruaryToUppercaseTransformer
-        -> GoodsDatabaseLoader;
+    WorldBankDataExtractor
+        -> ExcelInterpreter
+        -> SheetSelector
+        -> CellRangeSelector
+        -> ColumnRenamer
+        -> DataValidator
+        -> BondIssuanceLoader
+        -> GDPPerCapitaLoader;
 
-    // Extract data from the provided URL
-    block GoodsExtractor oftype HttpExtractor {
-        url: "https://www-genesis.destatis.de/genesis/downloads/00/tables/46131-0014_00.csv";
+    // Extract the Excel file from the provided URL
+    block WorldBankDataExtractor oftype HttpExtractor {
+        url: "https://thedocs.worldbank.org/en/doc/7d852628d96b9411d43e5d36d5dff941-0050062022/original/Graphs-Chapter-5-02082022.xlsx";
     }
 
-    // Interpret the file as text with specified encoding
-    block GoodsTextFileInterpreter oftype TextFileInterpreter {
-        encoding: "latin3";
+    // Interpret the file as an Excel workbook
+    block ExcelInterpreter oftype ExcelFileInterpreter {}
+
+    // Select the specific sheet "Figure S5.1.2"
+    block SheetSelector oftype SheetSelector {
+        sheet: "Figure S5.1.2";
     }
 
-    // Interpret the text as a CSV file with a specific delimiter
-    block GoodsCSVInterpreter oftype CSVInterpreter {
-        delimiter: ";";
+    // Select the range containing the table (P2:S45)
+    block CellRangeSelector oftype CellRangeSelector {
+        select: range P2:S45;
     }
 
-    // Remove unnecessary rows from the dataset
-    block GoodsRowRemover oftype RowDeleter {
-        delete: [row 1, row 2, row 3, row 4, row 5, row 6, row 7, row 41338, row 41339];
+    // Rename the columns as per requirements
+    block ColumnRenamer oftype ColumnRenamer {
+        rename: {
+            "ISO3": "Country Code",
+            "GDP per capita (US$, thousands)": "GDP per Capita",
+            "Share of government sustainable bonds": "Bond Issuance Share"
+        };
     }
 
-    // Select the desired range of cells for further processing
-    block GoodsRangeSelector oftype CellRangeSelector {
-        select: range A1:AU*;
+    // Validate the data
+    block DataValidator oftype RowValidator {
+        constraints: [
+            "Country Code" is CountryCodeAlpha3 and not empty,
+            "GDP per Capita" is decimal and not empty and greater than 0,
+            "Bond Issuance Share" is decimal and not empty and between 0 and 1
+        ];
     }
 
-    // Add headers for the transported goods data
-    block TransportedGoodsHeaderAdder oftype CellWriter {
-        at: range A1:E1;
-        write: ["year", "month", "goods_id", "goods_name", "goods_source"];
-    }
-
-    // Add headers for the quantity and total columns
-    block QuantityNameHeaderAdder oftype CellWriter {
-        at: range AT1:AU1;
-        write: ["abroad", "total"];
-    }
-
-    // Interpret the data as a structured table with column validation
-    block GoodsTableProcessor oftype TableInterpreter {
-        header: true;
+    // Load Bond Issuance Share data into SQLite
+    block BondIssuanceLoader oftype SQLiteLoader {
+        table: "bondIssuance";
+        file: "country-stats.sqlite";
         columns: [
-            "year" PositiveInteger,
-            "month" GermanMonth,
-            "goods_id" NST7,
-            "goods_name" text,
-            "goods_source" text,
-            "abroad" PositiveInteger,
-            "total" PositiveInteger
+            "Country Code" as text,
+            "Bond Issuance Share" as float
         ];
     }
 
-    // Define a value type for positive integers
-    valuetype PositiveInteger oftype integer {
-        constraints: [ensurePositive];
-    }
-    constraint ensurePositive on decimal {
-        value >= 0;
-    }
-
-    // Define a value type for "NST7-" formatted IDs
-    valuetype NST7 oftype text {
-        constraints: [ensureNST7Format];
-    }
-    constraint ensureNST7Format oftype RegexConstraint {
-        regex: /^NST7-[A-Z0-9]{3}$/;
-    }
-
-    // Define a value type for German month names
-    valuetype GermanMonth oftype text {
-        constraints: [restrictToGermanMonths];
-    }
-    constraint restrictToGermanMonths oftype AllowlistConstraint {
-        allowlist: [
-            "Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
-            "August", "September", "Oktober", "November", "Dezember"
+    // Load GDP per Capita data into SQLite
+    block GDPPerCapitaLoader oftype SQLiteLoader {
+        table: "gdpPerCapita";
+        file: "country-stats.sqlite";
+        columns: [
+            "Country Code" as text,
+            "GDP per Capita" as float
         ];
-    }
-
-    // Transform "Januar" to uppercase
-    transform MonthToUppercase {
-        from inputColumn oftype text;
-        to outputColumn oftype text;
-        outputColumn: inputColumn replace /Januar/ with "JANUAR";
-    }
-    block MonthToUppercaseTransformer oftype TableTransformer {
-        inputColumns: ["month"];
-        outputColumn: "month";
-        use: MonthToUppercase;
-    }
-
-    // Transform "Februar" to uppercase
-    transform FebruaryToUppercase {
-        from inputColumn oftype text;
-        to outputColumn oftype text;
-        outputColumn: inputColumn replace /Februar/ with "FEBRUAR";
-    }
-    block FebruaryToUppercaseTransformer oftype TableTransformer {
-        inputColumns: ["month"];
-        outputColumn: "month";
-        use: FebruaryToUppercase;
-    }
-
-    // Load the cleaned and transformed data into a SQLite database
-    block GoodsDatabaseLoader oftype SQLiteLoader {
-        table: "goods";
-        file: "goodsTransportedByTrain.sqlite";
     }
 }
