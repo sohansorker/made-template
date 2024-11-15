@@ -8,8 +8,8 @@ pipeline GoodsPipeline {
         -> TransportedGoodsHeaderAdder
         -> QuantityNameHeaderAdder
         -> GoodsTableProcessor
-        -> TransformMonthToUppercase
-        -> TransformFebruaryToUppercase
+        -> MonthToUppercaseTransformer
+        -> FebruaryToUppercaseTransformer
         -> GoodsDatabaseLoader;
 
     // Extract data from the provided URL
@@ -39,13 +39,13 @@ pipeline GoodsPipeline {
 
     // Add headers for the transported goods data
     block TransportedGoodsHeaderAdder oftype CellWriter {
-        at: cell A1:E1;
+        at: range A1:E1;
         write: ["year", "month", "goods_id", "goods_name", "goods_source"];
     }
 
     // Add headers for the quantity and total columns
     block QuantityNameHeaderAdder oftype CellWriter {
-        at: cell AT1:AU1;
+        at: range AT1:AU1;
         write: ["abroad", "total"];
     }
 
@@ -53,13 +53,13 @@ pipeline GoodsPipeline {
     block GoodsTableProcessor oftype TableInterpreter {
         header: true;
         columns: [
-            {name: "year", type: PositiveInteger},
-            {name: "month", type: GermanMonth},
-            {name: "goods_id", type: NST7},
-            {name: "goods_name", type: TextType},
-            {name: "goods_source", type: TextType},
-            {name: "abroad", type: PositiveInteger},
-            {name: "total", type: PositiveInteger}
+            "year" PositiveInteger,
+            "month" GermanMonth,
+            "goods_id" NST7,
+            "goods_name" text,
+            "goods_source" text,
+            "abroad" PositiveInteger,
+            "total" PositiveInteger
         ];
     }
 
@@ -90,28 +90,28 @@ pipeline GoodsPipeline {
         ];
     }
 
-    // Transform months to uppercase
-    transform TransformMonth {
-        from original oftype text;
-        to transformed oftype text;
-        transformed: original replace /Januar/ with "JANUAR";
+    // Transform "Januar" to uppercase
+    transform MonthToUppercase {
+        from inputColumn oftype text;
+        to outputColumn oftype text;
+        outputColumn: inputColumn replace /Januar/ with "JANUAR";
     }
-    block TransformMonthToUppercase oftype TableTransformer {
+    block MonthToUppercaseTransformer oftype TableTransformer {
         inputColumns: ["month"];
         outputColumn: "month";
-        use: TransformMonth;
+        use: MonthToUppercase;
     }
 
     // Transform "Februar" to uppercase
-    transform TransformFebruary {
-        from original oftype text;
-        to transformed oftype text;
-        transformed: original replace /Februar/ with "FEBRUAR";
+    transform FebruaryToUppercase {
+        from inputColumn oftype text;
+        to outputColumn oftype text;
+        outputColumn: inputColumn replace /Februar/ with "FEBRUAR";
     }
-    block TransformFebruaryToUppercase oftype TableTransformer {
+    block FebruaryToUppercaseTransformer oftype TableTransformer {
         inputColumns: ["month"];
         outputColumn: "month";
-        use: TransformFebruary;
+        use: FebruaryToUppercase;
     }
 
     // Load the cleaned and transformed data into a SQLite database
