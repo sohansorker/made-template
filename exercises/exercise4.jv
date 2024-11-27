@@ -11,6 +11,7 @@ pipeline TemperaturePipeline {
 
     // Download and unzip data
     block TemperatureExtractor oftype HttpExtractor {
+        // https://www.mowesta.com/data/measure/mowesta-dataset-20221107.zip
         url: "https://www.mowesta.com/data/measure/mowesta-dataset-20221107.zip";
     }
 
@@ -24,37 +25,43 @@ pipeline TemperaturePipeline {
         path: "/data.csv";
     }
 
-    block TemperatureFileInterpreter oftype TextFileInterpreter {}
+    block TemperatureFileInterpreter oftype TextFileInterpreter{}
 
     block TemperatureCSVInterpreter oftype CSVInterpreter {
         delimiter: ";";
     }
 
-    // Select only the relevant columns and reshape data
-    block ColDataSelector oftype CellRangeSelector { 
-        select: range A1:F*;  // Select only the relevant columns: "Geraet", "Hersteller", "Model", "Monat", "Temperatur in °C (DWD)", "Batterietemperatur in °C"
-    }
-
-    // Write the columns with proper English names
+    block ColDataSelector oftype CellRangeSelector {select: range A1:K*;}
     block TemperaturesCellWriter1 oftype CellWriter {
-        at: range A1:F1;  // Write headers to the first row
-        write: ["id", "producer", "model", "month", "temperature", "battery_temperature"];
-    }
-
-    // Reshape data and assign column types
-    block TemperatureTableInterpreter oftype TableInterpreter {
-        header: true;
-        columns: [
-            "id" oftype BIGINT, 
-            "producer" oftype TEXT, 
-            "model" oftype TEXT, 
-            "month" oftype INTEGER, 
-            "temperature" oftype FLOAT, 
-            "battery_temperature" oftype FLOAT
+        at:range A1:E1; 
+        write:["id", 
+        "producer",  
+        "model",     
+        "month",     
+        "temperature"
         ];
     }
 
-    // Convert temperatures from Celsius to Fahrenheit
+    // “Batterietemperatur in °C” to “battery_temperature”
+    block TemperaturesCellWriter2 oftype CellWriter { 
+        at:cell J1; 
+        write:["battery_temperature"];
+        }
+
+
+    // Reshape data
+    block TemperatureTableInterpreter oftype TableInterpreter {
+        header: true;
+        columns: [
+            "id" oftype integer,
+            "producer" oftype text,
+            "model" oftype text,
+            "month" oftype integer,
+            "temperature" oftype decimal,
+            "battery_temperature" oftype decimal,
+        ];
+    }
+
     block TemperatureTableTransformer oftype TableTransformer {
         inputColumns: ['temperature'];
         outputColumn: 'temperature';
@@ -66,11 +73,7 @@ pipeline TemperaturePipeline {
         outputColumn: 'battery_temperature';
         use: TempConvert;
     }
-
-    // Validate data: ensure id > 0
-    block IDValidator oftype RowValidator {
-        condition: "id > 0";
-    }
+    
 
     // Write data into a SQLite database called “temperatures.sqlite”, in the table “temperatures”
     block TemperatureSQLiteLoader oftype SQLiteLoader {
@@ -78,18 +81,17 @@ pipeline TemperaturePipeline {
         file: 'temperatures.sqlite';
     }
 
-    // Define the pipeline flow
     TemperatureExtractor
-        -> TemperatureArchiveInterpreter
-        -> TemperatureFilePicker
-        -> TemperatureFileInterpreter
-        -> TemperatureCSVInterpreter
-        -> ColDataSelector
+        ->TemperatureArchiveInterpreter
+        ->TemperatureFilePicker
+        ->TemperatureFileInterpreter
+        ->TemperatureCSVInterpreter
         -> TemperaturesCellWriter1
-        -> TemperatureTableInterpreter
-        -> TemperatureTableTransformer
-        -> BatterieTemperatureTableTransformer
-        -> IDValidator
-        -> TemperatureSQLiteLoader;
-
+        -> TemperaturesCellWriter2
+        ->ColDataSelector
+        ->TemperatureTableInterpreter
+        ->TemperatureTableTransformer
+        ->BatterieTemperatureTableTransformer
+        ->TemperatureSQLiteLoader;
+        
 }
