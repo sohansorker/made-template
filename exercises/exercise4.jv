@@ -1,98 +1,74 @@
-// Transform data: syntax: https://jvalue.github.io/jayvee/docs/user/transforms
-transform TempConvert
-{
-  from celsius oftype decimal;
-  to fahrenheit oftype decimal;
-
-  fahrenheit: (celsius * 9/5) + 32;
+// Define the transformation to convert Celsius to Fahrenheit
+transform TempConvert {
+    from celsius oftype decimal;
+    to fahrenheit oftype decimal;
+    fahrenheit: (celsius * 9/5) + 32;
 }
 
 pipeline TemperaturePipeline {
 
-    // Step 1: Download the zip file
+    // Step 1: Download the zip file from the source URL
     block TemperatureExtractor oftype HttpExtractor {
         url: "https://www.mowesta.com/data/measure/mowesta-dataset-20221107.zip";
     }
 
-    // Step 2: Unzip the downloaded data
+    // Step 2: Unzip the downloaded file
     block TemperatureArchiveInterpreter oftype ArchiveInterpreter {
         archiveType: "zip";
     }
 
-    // Step 3: Pick the "data.csv" from the unzipped files
+    // Step 3: Select the "data.csv" file from the extracted archive
     block TemperatureFilePicker oftype FilePicker {
         path: "/data.csv";
     }
 
-    // Step 4: Interpret the text file (CSV)
-    block TemperatureFileInterpreter oftype TextFileInterpreter {}
-
-    // Step 5: Parse the CSV with a semicolon delimiter
+    // Step 4: Interpret the CSV file
     block TemperatureCSVInterpreter oftype CSVInterpreter {
         delimiter: ";";
     }
 
-    // Step 6: Select only the required columns (Geraet, Hersteller, Model, Monat, Temperatur, and Batterietemperatur)
-    // Adjust the range to include column J for battery temperature
-    block ColDataSelector oftype CellRangeSelector { 
-        select: range A1:J*;  // Select columns: Geraet (A), Hersteller (B), Model (C), Monat (D), Temperatur (E), and Batterietemperatur in °C (J)
+    // Step 5: Select the relevant columns from the CSV file
+    block ColDataSelector oftype CellRangeSelector {
+        select: range A1:J*; // Select columns A to J (from "Geraet" to "Batterietemperatur in °C")
     }
 
-    // Step 7: Rename the columns from German to English
-    block TemperaturesCellWriter1 oftype CellWriter {
-        at: range A1:J1;  // Writing headers to the first row
+    // Step 6: Rename columns to English
+    block ColumnRenamer oftype CellWriter {
+        at: range A1:J1;  // Writing the headers to the first row
         write: ["id", "producer", "model", "month", "temperature", "battery_temperature"];
     }
 
-    // Step 8: Reshape data (map columns to appropriate data types)
-    block TemperatureTableInterpreter oftype TableInterpreter {
-        header: true;
-        columns: [
-            "id" oftype integer, 
-            "producer" oftype text, 
-            "model" oftype text, 
-            "month" oftype integer, 
-            "temperature" oftype decimal, 
-            "battery_temperature" oftype decimal,
-        ];
-    }
-
-    // Step 9: Convert temperature from Celsius to Fahrenheit for the 'temperature' column
+    // Step 7: Convert temperature columns from Celsius to Fahrenheit
     block TemperatureTableTransformer oftype TableTransformer {
-        inputColumns: ['battery_temperature'];
-        outputColumns: ['battery_temperature'];
-        function: TempConvert;
+        inputColumns: ["temperature"];
+        transform: TempConvert;
     }
 
-    // Step 10: Convert battery temperature from Celsius to Fahrenheit (column J)
-    block BatterieTemperatureTableTransformer oftype TableTransformer {
-        inputColumns: ['battery_temperature'];
-        outputColumn: 'battery_temperature';
-        use: TempConvert;
+    block BatteryTemperatureTableTransformer oftype TableTransformer {
+        inputColumns: ["battery_temperature"];
+        transform: TempConvert;
     }
 
-    // Step 11: Validate data (Ensure id > 0)
+    // Step 8: Validate data (for example, ensuring 'id' is greater than 0)
     block IDValidator oftype RowValidator {
         condition: "id > 0";
     }
 
-    // Step 12: Write the data to SQLite database
+    // Step 9: Write the data to SQLite database
     block TemperatureSQLiteLoader oftype SQLiteLoader {
-        table: 'temperatures';
-        file: 'temperatures.sqlite';
+        table: "temperatures";
+        file: "temperatures.sqlite";
     }
 
-    // Pipeline Flow: 
+    // Pipeline Flow:
     TemperatureExtractor
         -> TemperatureArchiveInterpreter
         -> TemperatureFilePicker
-        -> TemperatureFileInterpreter
         -> TemperatureCSVInterpreter
         -> ColDataSelector
-        -> TemperaturesCellWriter1
-        -> TemperatureTableInterpreter
+        -> ColumnRenamer
         -> TemperatureTableTransformer
-        -> BatterieTemperatureTableTransformer
+        -> BatteryTemperatureTableTransformer
         -> IDValidator
         -> TemperatureSQLiteLoader;
 
