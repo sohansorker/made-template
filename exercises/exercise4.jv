@@ -1,77 +1,93 @@
-// Define the transformation to convert Celsius to Fahrenheit
-transform TempConvert {
-    from celsius oftype decimal;
-    to fahrenheit oftype decimal;
-    fahrenheit: (celsius * 9/5) + 32;
-}
+pipeline BatteryPipeline { 
 
-pipeline TemperaturePipeline {
-
-    // Step 1: Extract the data from the URL
-    block TemperatureExtractor oftype HttpExtractor {
+    block BatteryExtractor oftype HttpExtractor {
         url: "https://www.mowesta.com/data/measure/mowesta-dataset-20221107.zip";
-    }
-
-    // Step 2: Unzip the downloaded file
-    block TemperatureArchiveInterpreter oftype ArchiveInterpreter {
+    } 
+    
+    block BatteryArchiveInterpreter oftype ArchiveInterpreter {
         archiveType: "zip";
+    } 
+    
+    block BatteryFilePicker oftype FilePicker {
+        path: "/data.csv"; 
     }
 
-    // Step 3: Select the "data.csv" file from the extracted archive
-    block TemperatureFilePicker oftype FilePicker {
-        path: "/data.csv";
-    }
+    block BatteryFileInterpreter oftype TextFileInterpreter{
 
-    // Step 4: Parse the CSV file
-    block TemperatureCSVInterpreter oftype CSVInterpreter {
+    }
+     
+    block BatteryCSVInterpreter oftype CSVInterpreter {
         delimiter: ";";
     }
 
-    // Step 5: Select the relevant columns from the CSV file (A to J)
-    block ColDataSelector oftype CellRangeSelector {
-        select: range A1:J*;
+    block BatteryCoreDataSelector oftype CellRangeSelector {
+    select: range A1:K*;
+    } 
+    
+    block RenameTemperaturCellWriter oftype CellWriter {
+        at: cell E1;
+        write: ["Temperatur"]; 
     }
 
-    // Step 6: Rename columns to English
-    block ColumnRenamer oftype CellWriter {
-        at: range A1:J1;
-        write: ["id", "producer", "model", "month", "temperature", "battery_temperature"];
+    block RenameTemperaturBatteryCellWriter oftype CellWriter {
+        at: cell J1;
+        write: ["Batterietemperatur"]; 
+    }  
+
+    block BatterieTableInterpreter oftype TableInterpreter { 
+        header: true;
+        columns: [
+        "Geraet" oftype integer,
+        "Hersteller" oftype text, 
+        "Model" oftype text, 
+        "Monat" oftype integer, 
+        "Temperatur" oftype decimal, 
+        "Batterietemperatur" oftype decimal, 
+        "Geraet aktiv" oftype text, 
+        ];
+    } 
+     
+    transform CelsiusToFahrenheit {
+        from Celsius oftype decimal;
+        to Fahrenheit oftype decimal;
+        Fahrenheit: (Celsius * 1.8) + 32;
+    } 
+
+    block CelsiusToFahrenheitTransformer oftype TableTransformer {
+        inputColumns: ['Temperatur'];
+        outputColumn: 'Temperatur';
+        use: CelsiusToFahrenheit;
     }
 
-    // Step 7: Apply temperature conversion transformation to the 'temperature' column
-    block TemperatureTableTransformer oftype TableTransformer {
-        inputColumns: ["temperature"];
-        outputColumn: "temperature";
-        use: TempConvert;  // Apply TempConvert transformation to 'temperature'
-    }
+    block CelsiusToFahrenheitBatteryTransformer oftype TableTransformer {
+        inputColumns: ['Batterietemperatur'];
+        outputColumn: 'Batterietemperatur';
+        use: CelsiusToFahrenheit;
+    } 
 
-    // Step 8: Apply temperature conversion transformation to the 'battery_temperature' column
-    block BatteryTemperatureTableTransformer oftype TableTransformer {
-        inputColumns: ["battery_temperature"];
-        outputColumn: "battery_temperature";
-        use: TempConvert;  // Apply TempConvert transformation to 'battery_temperature'
-    }
+    constraint ValidGeraetNumberRange on decimal:
+        value > 0;
 
-    // Step 9: Write the transformed data into an SQLite database
-    block TemperatureSQLiteLoader oftype SQLiteLoader {
+    valuetype ValidGeraetNumber oftype integer {
+        constraints: [ ValidGeraetNumberRange ];
+    } 
+    
+    block BatterieLoader oftype SQLiteLoader {
         table: "temperatures";
-        file: "temperatures.sqlite";
-    }
+        file: "./temperatures.sqlite";
+     } 
 
-    // Step 10: Validate data (ensure id > 0)
-    block IDValidator oftype RowValidator {
-        condition: "id > 0";
-    }
+   BatteryExtractor 
+    -> BatteryArchiveInterpreter
+    -> BatteryFilePicker
+    -> BatteryFileInterpreter
+    -> BatteryCSVInterpreter
+    -> BatteryCoreDataSelector
+    -> RenameTemperaturCellWriter
+    -> RenameTemperaturBatteryCellWriter
+    -> BatterieTableInterpreter
+    -> CelsiusToFahrenheitTransformer
+    -> CelsiusToFahrenheitBatteryTransformer
+    -> BatterieLoader;
 
-    // Step 11: Pipeline execution flow
-    TemperatureExtractor
-        -> TemperatureArchiveInterpreter
-        -> TemperatureFilePicker
-        -> TemperatureCSVInterpreter
-        -> ColDataSelector
-        -> ColumnRenamer
-        -> TemperatureTableTransformer
-        -> BatteryTemperatureTableTransformer
-        -> IDValidator
-        -> TemperatureSQLiteLoader;
-}
+} 
