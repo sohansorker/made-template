@@ -9,89 +9,91 @@ transform TempConvert
 
 pipeline TemperaturePipeline {
 
-    // Download and unzip data
+    // Step 1: Download the zip file
     block TemperatureExtractor oftype HttpExtractor {
-        // https://www.mowesta.com/data/measure/mowesta-dataset-20221107.zip
         url: "https://www.mowesta.com/data/measure/mowesta-dataset-20221107.zip";
     }
 
-    // Unzipping Data
+    // Step 2: Unzip the downloaded data
     block TemperatureArchiveInterpreter oftype ArchiveInterpreter {
         archiveType: "zip";
     }
 
-    // Use the “data.csv” in the zip file 
+    // Step 3: Pick the "data.csv" from the unzipped files
     block TemperatureFilePicker oftype FilePicker {
         path: "/data.csv";
     }
 
-    block TemperatureFileInterpreter oftype TextFileInterpreter{}
+    // Step 4: Interpret the text file (CSV)
+    block TemperatureFileInterpreter oftype TextFileInterpreter {}
 
+    // Step 5: Parse the CSV with a semicolon delimiter
     block TemperatureCSVInterpreter oftype CSVInterpreter {
         delimiter: ";";
     }
 
-    block ColDataSelector oftype CellRangeSelector {select: range A1:K*;}
-    block TemperaturesCellWriter1 oftype CellWriter {
-        at:range A1:E1; 
-        write:["id", 
-        "producer",  
-        "model",     
-        "month",     
-        "temperature"
-        ];
+    // Step 6: Select only the required columns (Geraet, Hersteller, Model, Monat, Temperatur, and Batterietemperatur)
+    // Adjust the range to include column J for battery temperature
+    block ColDataSelector oftype CellRangeSelector { 
+        select: range A1:J*;  // Select columns: Geraet (A), Hersteller (B), Model (C), Monat (D), Temperatur (E), and Batterietemperatur in °C (J)
     }
 
-    // “Batterietemperatur in °C” to “battery_temperature”
-    block TemperaturesCellWriter2 oftype CellWriter { 
-        at:cell J1; 
-        write:["battery_temperature"];
-        }
+    // Step 7: Rename the columns from German to English
+    block TemperaturesCellWriter1 oftype CellWriter {
+        at: range A1:J1;  // Writing headers to the first row
+        write: ["id", "producer", "model", "month", "temperature", "battery_temperature"];
+    }
 
-
-    // Reshape data
+    // Step 8: Reshape data (map columns to appropriate data types)
     block TemperatureTableInterpreter oftype TableInterpreter {
         header: true;
         columns: [
-            "id" oftype integer,
-            "producer" oftype text,
-            "model" oftype text,
-            "month" oftype integer,
-            "temperature" oftype decimal,
-            "battery_temperature" oftype decimal,
+            "id" oftype integer, 
+            "producer" oftype text, 
+            "model" oftype text, 
+            "month" oftype integer, 
+            "temperature" oftype float, 
+            "battery_temperature" oftype float,
         ];
     }
 
+    // Step 9: Convert temperature from Celsius to Fahrenheit for the 'temperature' column
     block TemperatureTableTransformer oftype TableTransformer {
         inputColumns: ['temperature'];
         outputColumn: 'temperature';
         use: TempConvert;
     }
 
+    // Step 10: Convert battery temperature from Celsius to Fahrenheit (column J)
     block BatterieTemperatureTableTransformer oftype TableTransformer {
         inputColumns: ['battery_temperature'];
         outputColumn: 'battery_temperature';
         use: TempConvert;
     }
-    
 
-    // Write data into a SQLite database called “temperatures.sqlite”, in the table “temperatures”
+    // Step 11: Validate data (Ensure id > 0)
+    block IDValidator oftype RowValidator {
+        condition: "id > 0";
+    }
+
+    // Step 12: Write the data to SQLite database
     block TemperatureSQLiteLoader oftype SQLiteLoader {
         table: 'temperatures';
         file: 'temperatures.sqlite';
     }
 
+    // Pipeline Flow: 
     TemperatureExtractor
-        ->TemperatureArchiveInterpreter
-        ->TemperatureFilePicker
-        ->TemperatureFileInterpreter
-        ->TemperatureCSVInterpreter
+        -> TemperatureArchiveInterpreter
+        -> TemperatureFilePicker
+        -> TemperatureFileInterpreter
+        -> TemperatureCSVInterpreter
+        -> ColDataSelector
         -> TemperaturesCellWriter1
-        -> TemperaturesCellWriter2
-        ->ColDataSelector
-        ->TemperatureTableInterpreter
-        ->TemperatureTableTransformer
-        ->BatterieTemperatureTableTransformer
-        ->TemperatureSQLiteLoader;
-        
+        -> TemperatureTableInterpreter
+        -> TemperatureTableTransformer
+        -> BatterieTemperatureTableTransformer
+        -> IDValidator
+        -> TemperatureSQLiteLoader;
+
 }
