@@ -59,9 +59,9 @@ pipeline TemperaturePipeline {
 
     // Step 9: Convert temperature from Celsius to Fahrenheit for the 'temperature' column
     block TemperatureTableTransformer oftype TableTransformer {
-        inputColumns: ['temperature'];
-        outputColumn: 'temperature';
-        use: TempConvert;
+        inputColumns: ['battery_temperature'];
+        outputColumns: ['battery_temperature'];
+        function: TempConvert;
     }
 
     // Step 10: Convert battery temperature from Celsius to Fahrenheit (column J)
