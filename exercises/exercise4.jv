@@ -7,7 +7,7 @@ transform TempConvert {
 
 pipeline TemperaturePipeline {
 
-    // Step 1: Download the zip file from the source URL
+    // Step 1: Extract the data from the URL
     block TemperatureExtractor oftype HttpExtractor {
         url: "https://www.mowesta.com/data/measure/mowesta-dataset-20221107.zip";
     }
@@ -22,45 +22,48 @@ pipeline TemperaturePipeline {
         path: "/data.csv";
     }
 
-    // Step 4: Interpret the CSV file
+    // Step 4: Parse the CSV file
     block TemperatureCSVInterpreter oftype CSVInterpreter {
         delimiter: ";";
     }
 
-    // Step 5: Select the relevant columns from the CSV file
+    // Step 5: Select the relevant columns from the CSV file (A to J)
     block ColDataSelector oftype CellRangeSelector {
-        select: range A1:J*; // Select columns A to J (from "Geraet" to "Batterietemperatur in °C")
+        select: range A1:J*;
     }
 
     // Step 6: Rename columns to English
     block ColumnRenamer oftype CellWriter {
-        at: range A1:J1;  // Writing the headers to the first row
+        at: range A1:J1;
         write: ["id", "producer", "model", "month", "temperature", "battery_temperature"];
     }
 
-    // Step 7: Convert temperature columns from Celsius to Fahrenheit
+    // Step 7: Apply temperature conversion transformation to the 'temperature' column
     block TemperatureTableTransformer oftype TableTransformer {
         inputColumns: ["temperature"];
-        transform: TempConvert;
+        outputColumn: "temperature";
+        use: TempConvert;  // Apply TempConvert transformation to 'temperature'
     }
 
+    // Step 8: Apply temperature conversion transformation to the 'battery_temperature' column
     block BatteryTemperatureTableTransformer oftype TableTransformer {
         inputColumns: ["battery_temperature"];
-        transform: TempConvert;
+        outputColumn: "battery_temperature";
+        use: TempConvert;  // Apply TempConvert transformation to 'battery_temperature'
     }
 
-    // Step 8: Validate data (for example, ensuring 'id' is greater than 0)
-    block IDValidator oftype RowValidator {
-        condition: "id > 0";
-    }
-
-    // Step 9: Write the data to SQLite database
+    // Step 9: Write the transformed data into an SQLite database
     block TemperatureSQLiteLoader oftype SQLiteLoader {
         table: "temperatures";
         file: "temperatures.sqlite";
     }
 
-    // Pipeline Flow:
+    // Step 10: Validate data (ensure id > 0)
+    block IDValidator oftype RowValidator {
+        condition: "id > 0";
+    }
+
+    // Step 11: Pipeline execution flow
     TemperatureExtractor
         -> TemperatureArchiveInterpreter
         -> TemperatureFilePicker
@@ -71,5 +74,4 @@ pipeline TemperaturePipeline {
         -> BatteryTemperatureTableTransformer
         -> IDValidator
         -> TemperatureSQLiteLoader;
-
 }
