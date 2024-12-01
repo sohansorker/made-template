@@ -78,8 +78,8 @@ pipeline TemperaturePipeline {
             "producer" oftype text,
             "model" oftype text,
             "month" oftype MonthType,        
-            "temperature" oftype float,
-            "battery_temperature" oftype float
+            "temperature" oftype decimal,
+            "battery_temperature" oftype decimal
         ];
     }
 
