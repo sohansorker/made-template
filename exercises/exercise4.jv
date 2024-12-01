@@ -55,6 +55,12 @@ pipeline TemperaturePipeline {
     //  Rename columns from German to English
     block ColumnRenamer oftype CellWriter {
         at: range A1:E1;
+        write:["id", 
+        "producer",  
+        "model",     
+        "month",     
+        "temperature"
+        ];
     }
 
     //  Interpret the data into a table format with correct types
