@@ -4,7 +4,10 @@ constraint GreaterThanZero on integer:
 
 // reusable constraint for month range (1 to 12)
 constraint ValidMonthRange on integer:
-    value >= 1 && value <= 12;
+    lowerBound: 1;
+    lowerBoundInclusive: true;
+    upperBound: 12;
+    upperBoundInclusive: true;
 
 //  reusable valuetypes applying the constraints
 valuetype IdType oftype integer {
