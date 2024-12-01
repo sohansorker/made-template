@@ -1,18 +1,23 @@
-// Define a reusable constraint 
-constraint GreaterThanZero on integer:
+// Define constraint for id greater than 0
+constraint ValidIdRange on integer:
     value > 0;
 
-// Define a reusable constraint for month range (1 to 12)
-constraint ValidMonthRange on integer:
-    value >= 1 && value <= 12;
-
-// Create reusable valuetypes applying the constraints
-valuetype IdType oftype integer {
-    constraints: [GreaterThanZero]; 
+// Define constraint for valid month range (1 to 12)
+constraint MonthRange oftype RangeConstraint {
+    lowerBound: 1;
+    lowerBoundInclusive: true;
+    upperBound: 12;
+    upperBoundInclusive: true;
 }
 
+// Valuetype for id with the ValidIdRange constraint
+valuetype IdType oftype integer {
+    constraints: [ValidIdRange];
+}
+
+// Valuetype for month with the MonthRange constraint
 valuetype MonthType oftype integer {
-    constraints: [ValidMonthRange]; 
+    constraints: [MonthRange];
 }
 
 // If needed, you can also define other valuetypes or constraints in a similar modular way
@@ -77,11 +82,11 @@ pipeline TemperaturePipeline {
         header: true;
         columns: [
             "id" oftype IdType,             
-            "producer" oftype TEXT,
-            "model" oftype TEXT,
+            "producer" oftype text,
+            "model" oftype text,
             "month" oftype MonthType,        
-            "temperature" oftype FLOAT,
-            "battery_temperature" oftype FLOAT
+            "temperature" oftype float,
+            "battery_temperature" oftype float
         ];
     }
 
