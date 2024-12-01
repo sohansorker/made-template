@@ -87,14 +87,14 @@ pipeline TemperaturePipeline {
     block TemperatureTransformer oftype TableTransformer {
         inputColumns: ['temperature'];
         outputColumn: 'temperature';
-        use: TempConvert;
+        uses: TempConvert;
     }
 
     // Transform the battery_temperature column (Celsius to Fahrenheit)
     block BatteryTemperatureTransformer oftype TableTransformer {
         inputColumns: ['battery_temperature'];
         outputColumn: 'battery_temperature';
-        use: TempConvert;
+        uses: TempConvert;
     }
 
     // Load the data into a SQLite database
