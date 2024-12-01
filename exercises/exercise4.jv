@@ -20,7 +20,6 @@ valuetype MonthType oftype integer {
     constraints: [MonthRange];
 }
 
-// If needed, you can also define other valuetypes or constraints in a similar modular way
 // Transform Function: Celsius to Fahrenheit conversion
 transform TempConvert
 {
@@ -71,12 +70,6 @@ pipeline TemperaturePipeline {
         ];
     }
 
-    // Validate data using the constraints
-    block DataValidator oftype RowValidator {
-        validate: "id > 0";  // Ensure id is greater than 0
-        validate: "month >= 1 && month <= 12";  // Ensure month is between 1 and 12
-    }
-
     //  Interpret the data into a table format with correct types
     block TemperatureTableInterpreter oftype TableInterpreter {
         header: true;
@@ -118,7 +111,6 @@ pipeline TemperaturePipeline {
         -> TemperatureCSVInterpreter
         -> TemperaturesCellWriter
         -> ColumnRenamer
-        -> DataValidator
         -> TemperatureTableInterpreter
         -> TemperatureTransformer
         -> BatteryTemperatureTransformer
