@@ -1,23 +1,18 @@
-// Define constraint for id greater than 0
-constraint ValidIdRange on integer:
+// reusable constraint 
+constraint GreaterThanZero on integer:
     value > 0;
 
-// Define constraint for valid month range (1 to 12)
-constraint MonthRange oftype RangeConstraint {
-    lowerBound: 1;
-    lowerBoundInclusive: true;
-    upperBound: 12;
-    upperBoundInclusive: true;
-}
+// reusable constraint for month range (1 to 12)
+constraint ValidMonthRange on integer:
+    value >= 1 && value <= 12;
 
-// Valuetype for id with the ValidIdRange constraint
+//  reusable valuetypes applying the constraints
 valuetype IdType oftype integer {
-    constraints: [ValidIdRange];
+    constraints: [GreaterThanZero]; 
 }
 
-// Valuetype for month with the MonthRange constraint
 valuetype MonthType oftype integer {
-    constraints: [MonthRange];
+    constraints: [ValidMonthRange]; 
 }
 
 // Transform Function: Celsius to Fahrenheit conversion
@@ -59,7 +54,7 @@ pipeline TemperaturePipeline {
 
     //  Rename columns from German to English
     block ColumnRenamer oftype CellWriter {
-        at: range A1:E1;
+        at: range A1:F1;
         write: [
             "id",              
             "producer",        
