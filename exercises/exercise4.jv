@@ -1,3 +1,21 @@
+// Define a reusable constraint 
+constraint GreaterThanZero on integer:
+    value > 0;
+
+// Define a reusable constraint for month range (1 to 12)
+constraint ValidMonthRange on integer:
+    value >= 1 && value <= 12;
+
+// Create reusable valuetypes applying the constraints
+valuetype IdType oftype integer {
+    constraints: [GreaterThanZero]; 
+}
+
+valuetype MonthType oftype integer {
+    constraints: [ValidMonthRange]; 
+}
+
+// If needed, you can also define other valuetypes or constraints in a similar modular way
 // Transform Function: Celsius to Fahrenheit conversion
 transform TempConvert
 {
