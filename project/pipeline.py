@@ -6,7 +6,7 @@ import sqlite3
 from io import BytesIO
 
 # Set the directory to store the data
-data_folder = "../data"
+data_folder = "./data"
 if not os.path.exists(data_folder):
     os.makedirs(data_folder)
 
