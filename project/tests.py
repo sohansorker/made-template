@@ -1,84 +1,133 @@
 import os
-import unittest
-import subprocess
+import sqlite3
 import pandas as pd
+import subprocess
 
-class DataPipelineTest(unittest.TestCase):
-    
-    # Define paths and filenames
-    DATA_DIR = "../data"
-    OUTPUT_FILE_1 = "electricity_production.csv"  
-    OUTPUT_FILE_2 = "gdp_growth.csv" 
-    OUTPUT_FILES = [OUTPUT_FILE_1, OUTPUT_FILE_2]
+# Define paths and constants for your pipeline
+DATA_DIR = "../data"
+ELECTRICITY_CSV = os.path.join(DATA_DIR, "electricity_production_processed.csv")
+GDP_CSV = os.path.join(DATA_DIR, "gdp_growth_processed.csv")
+SQLITE_DB = os.path.join(DATA_DIR, "cleaned_data.db")
+PIPELINE_SCRIPT = "pipeline.py"
 
-    def setUp(self):
-       
-        if os.path.exists(self.DATA_DIR):
-            for f in os.listdir(self.DATA_DIR):
-                file_path = os.path.join(self.DATA_DIR, f)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-        else:
-            os.makedirs(self.DATA_DIR)
-        
-        print("Setup complete. Cleaned old data.")
+# List of expected countries and years for validation
+LATIN_AMERICAN_COUNTRIES = [
+    "Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Costa Rica", "Cuba", "Dominican Republic", 
+    "Ecuador", "El Salvador", "Guatemala", "Honduras", "Mexico", "Nicaragua", "Panama", "Paraguay", "Peru", 
+    "Suriname", "Uruguay", "Venezuela"
+]
+EXPECTED_YEARS = [str(year) for year in range(2015, 2022)]
 
-    def test_run_data_pipeline(self):
-        """Test if the data pipeline runs successfully and generates output files."""
-        print("Running the data pipeline...")
+def test_pipeline_execution():
+    """
+    Test if the pipeline script executes successfully.
+    """
+    print("Testing pipeline execution...")
+    result = subprocess.run(["python", PIPELINE_SCRIPT], capture_output=True, text=True)
+    assert result.returncode == 0, f"Pipeline script failed: {result.stderr}"
+    print("Pipeline executed successfully.")
 
-        # Run the data pipeline (ensure the script fetch_and_process_data.py exists and is working)
-        try:
-            subprocess.check_call(["python3", "fetch_and_process_data.py"])
-        except subprocess.CalledProcessError as e:
-            self.fail(f"Data pipeline failed with error: {e}")
 
-        # Check if the output files exist
-        for file in self.OUTPUT_FILES:
-            file_path = os.path.join(self.DATA_DIR, file)
-            self.assertTrue(os.path.isfile(file_path), f"Output file {file} does not exist.")
+def test_electricity_csv_exists():
+    """
+    Test if the electricity production cleaned CSV file is created.
+    """
+    print("Testing if electricity cleaned CSV exists...")
+    assert os.path.exists(ELECTRICITY_CSV), f"Electricity cleaned CSV file not found: {ELECTRICITY_CSV}"
+    print("Electricity cleaned CSV exists.")
 
-        print("Data pipeline executed successfully, output files exist.")
 
-    def test_check_file_content(self):
-        """Test if the output files contain expected data, like 'Country Name'."""
-        print("Validating file content...")
+def test_gdp_csv_exists():
+    """
+    Test if the GDP growth cleaned CSV file is created.
+    """
+    print("Testing if GDP growth cleaned CSV exists...")
+    assert os.path.exists(GDP_CSV), f"GDP growth cleaned CSV file not found: {GDP_CSV}"
+    print("GDP growth cleaned CSV exists.")
 
-        # Check each output file for 'Country Name' in the header
-        for file in self.OUTPUT_FILES:
-            file_path = os.path.join(self.DATA_DIR, file)
-            df = pd.read_csv(file_path)
 
-            self.assertTrue('Country Name' in df.columns, f"File {file} does not contain 'Country Name' header.")
+def test_electricity_csv_content():
+    """
+    Test the content of the electricity production cleaned CSV file.
+    """
+    print("Testing electricity cleaned CSV content...")
+    df = pd.read_csv(ELECTRICITY_CSV)
+    assert not df.empty, "Electricity cleaned CSV file is empty."
+    assert "Country Name" in df.columns, "Expected column 'Country Name' not found in electricity CSV."
+    assert "Year" in df.columns, "Expected column 'Year' not found in electricity CSV."
+    assert set(EXPECTED_YEARS).issubset(df['Year'].astype(str).unique()), "Missing expected years in electricity CSV."
+    print("Electricity cleaned CSV content is valid.")
 
-            print(f"File {file} contains the 'Country Name' header.")
 
-    def test_validate_sample_data(self):
-        """Test if certain expected data, like 'Brazil' or '2020', exists in the output files."""
-        print("Validating sample data within the output files...")
+def test_gdp_csv_content():
+    """
+    Test the content of the GDP growth cleaned CSV file.
+    """
+    print("Testing GDP growth cleaned CSV content...")
+    df = pd.read_csv(GDP_CSV)
+    assert not df.empty, "GDP growth cleaned CSV file is empty."
+    assert "Country Name" in df.columns, "Expected column 'Country Name' not found in GDP CSV."
+    assert "Year" in df.columns, "Expected column 'Year' not found in GDP CSV."
+    assert set(EXPECTED_YEARS).issubset(df['Year'].astype(str).unique()), "Missing expected years in GDP CSV."
+    print("GDP cleaned CSV content is valid.")
 
-        # Validate Brazil is in electricity production data
-        file_path_1 = os.path.join(self.DATA_DIR, self.OUTPUT_FILE_1)
-        df1 = pd.read_csv(file_path_1)
-        self.assertTrue(df1['Country Name'].str.contains('Brazil').any(), "Brazil not found in the electricity production data.")
 
-        # Validate 2020 is in GDP growth data
-        file_path_2 = os.path.join(self.DATA_DIR, self.OUTPUT_FILE_2)
-        df2 = pd.read_csv(file_path_2)
-        self.assertTrue(df2['Country Name'].str.contains('Brazil').any(), "Brazil not found in the GDP growth data.")
-        self.assertTrue(df2['Year'].str.contains('2020').any(), "Data for 2020 is missing in GDP growth data.")
+def test_sqlite_db_exists():
+    """
+    Test if the SQLite database file is created.
+    """
+    print("Testing if SQLite database exists...")
+    assert os.path.exists(SQLITE_DB), f"SQLite database not found: {SQLITE_DB}"
+    print("SQLite database exists.")
 
-        print("Sample data validation passed.")
 
-    def tearDown(self):
-        """Cleanup after each test: Delete the data directory and its contents."""
-        if os.path.exists(self.DATA_DIR):
-            for f in os.listdir(self.DATA_DIR):
-                file_path = os.path.join(self.DATA_DIR, f)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-        print("Cleanup complete after tests.")
+def test_sqlite_tables():
+    """
+    Test if the expected tables exist in the SQLite database.
+    """
+    print("Testing SQLite database tables...")
+    with sqlite3.connect(SQLITE_DB) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = [row[0] for row in cursor.fetchall()]
+        assert "electricity_production" in tables, "Table 'electricity_production' not found in SQLite database."
+        assert "gdp_growth" in tables, "Table 'gdp_growth' not found in SQLite database."
+    print("Expected tables found in SQLite database.")
 
-# Running the tests
+
+def test_sqlite_table_content():
+    """
+    Test the content of the tables in the SQLite database.
+    """
+    print("Testing SQLite database table content...")
+    with sqlite3.connect(SQLITE_DB) as conn:
+        electricity_df = pd.read_sql("SELECT * FROM electricity_production;", conn)
+        gdp_df = pd.read_sql("SELECT * FROM gdp_growth;", conn)
+
+        # Check that the tables are not empty
+        assert not electricity_df.empty, "Table 'electricity_production' in SQLite database is empty."
+        assert not gdp_df.empty, "Table 'gdp_growth' in SQLite database is empty."
+
+        # Validate the structure of the tables
+        assert "Country Name" in electricity_df.columns, "Missing 'Country Name' column in electricity table."
+        assert "Year" in electricity_df.columns, "Missing 'Year' column in electricity table."
+        assert "Value" in electricity_df.columns, "Missing 'Value' column in electricity table."
+
+        assert "Country Name" in gdp_df.columns, "Missing 'Country Name' column in GDP table."
+        assert "Year" in gdp_df.columns, "Missing 'Year' column in GDP table."
+        assert "Value" in gdp_df.columns, "Missing 'Value' column in GDP table."
+    print("SQLite database tables contain valid data.")
+
+
 if __name__ == "__main__":
-    unittest.main()
+    # Run all tests
+    test_pipeline_execution()
+    test_electricity_csv_exists()
+    test_gdp_csv_exists()
+    test_electricity_csv_content()
+    test_gdp_csv_content()
+    test_sqlite_db_exists()
+    test_sqlite_tables()
+    test_sqlite_table_content()
+
+    print("All tests passed successfully.")
