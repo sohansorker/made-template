@@ -6,7 +6,7 @@ import pandas as pd
 class DataPipelineTest(unittest.TestCase):
     
     # Define paths and filenames
-    DATA_DIR = "./data"
+    DATA_DIR = "../data"
     OUTPUT_FILE_1 = "electricity_production.csv"  
     OUTPUT_FILE_2 = "gdp_growth.csv" 
     OUTPUT_FILES = [OUTPUT_FILE_1, OUTPUT_FILE_2]
