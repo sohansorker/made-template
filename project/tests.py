@@ -8,7 +8,7 @@ DATA_DIR = "../data"
 ELECTRICITY_CSV = os.path.join(DATA_DIR, "electricity_production_processed.csv")
 GDP_CSV = os.path.join(DATA_DIR, "gdp_growth_processed.csv")
 SQLITE_DB = os.path.join(DATA_DIR, "cleaned_data.db")
-PIPELINE_SCRIPT = "pipeline.py"
+PIPELINE_SCRIPT = "./project/pipeline.py"
 
 # List of expected countries and years for validation
 LATIN_AMERICAN_COUNTRIES = [
