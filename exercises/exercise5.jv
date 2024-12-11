@@ -1,47 +1,46 @@
-// Filter data for specific zone
-constraint ZoneIDRangeConstraint oftype RangeConstraint { lowerBound: 1925; upperBound: 1925; }
-valuetype ZoneID oftype integer { constraints: [ ZoneIDRangeConstraint ]; }
+// Constraint for ZoneID, ensuring only a specific range is allowed
+constraint ZoneIDRangeValidator oftype RangeConstraint { lowerBound: 1925; upperBound: 1925; }
+valuetype ZoneID oftype integer { constraints: [ ZoneIDRangeValidator ]; }
 
-// Data validation for geographic coordinates
-constraint GeoCoordinatesRangeConstraint oftype RangeConstraint { lowerBound: -90; upperBound: 90; }
-valuetype GeoCoordinates oftype decimal { constraints: [ GeoCoordinatesRangeConstraint ]; }
+// validating a specific range for coordinates
+constraint GeoCoordinateValidator oftype RangeConstraint { lowerBound: -90; upperBound: 90; }
+valuetype GeoCoordinates oftype decimal { constraints: [ GeoCoordinateValidator ]; }
 
+// Constraint to ensure stop names contain valid German characters
+constraint StopNameValidationRegex oftype RegexConstraint { regex: /[a-zA-ZäöüÄÖÜß]+/; }
+valuetype StopName oftype text { constraints: [ StopNameValidationRegex ]; }
 
-// Data validation for stop name to include German umlauts
-constraint StopNameConstraint oftype RegexConstraint { regex: /[a-zA-ZäöüÄÖÜß]+/; }
-valuetype StopName oftype text { constraints: [ StopNameConstraint ]; }
+pipeline GTFSProcessingPipeline {
 
-pipeline GTFSPipeline {
+    // Define the sequential blocks to process GTFS data
+    GTFSFileDownloader
+        -> GTFSArchiveExtractor
+        -> GTFSStopsFileSelector
+        -> GTFSFileTextInterpreter
+        -> GTFSCSVDataParser
+        -> GTFSDataMapper
+        -> GTFSDatabaseLoader;
 
-    // Build a pipe of all the GTFSPipeline's blocks
-    GTFSExtractor
-        -> GTFSArchiveInterpreter
-        -> GTFSFilePicker
-        -> GTFSTextFileInterpreter
-        -> GTFSCSVInterpreter
-        -> GTFSTableInterpreter
-        -> GTFSLoader;
+    // Extract GTFS zip file from a specified remote URL
+    block GTFSFileDownloader oftype HttpExtractor { url: "https://gtfs.rhoenenergie-bus.de/GTFS.zip"; }
 
-    // Extracts zip file from the desired url
-    block GTFSExtractor oftype HttpExtractor { url: "https://gtfs.rhoenenergie-bus.de/GTFS.zip"; }
+    // Unpack the downloaded zip file to access its contents
+    block GTFSArchiveExtractor oftype ArchiveInterpreter { archiveType: "zip"; }
 
-    // Unzip extracted data
-    block GTFSArchiveInterpreter oftype ArchiveInterpreter { archiveType: "zip"; }
+    // Select the specific file, "stops.txt," from the unpacked directory
+    block GTFSStopsFileSelector oftype FilePicker { path: "/stops.txt"; }
 
-    // Use the desired file in the unzip directory
-    block GTFSFilePicker oftype FilePicker { path: "/stops.txt"; }
+    // Convert the selected file from binary to a UTF-8 encoded text file
+    block GTFSFileTextInterpreter oftype TextFileInterpreter { encoding: "utf8"; }
 
-    // Converts from File type to TextFile type
-    block GTFSTextFileInterpreter oftype TextFileInterpreter { encoding: "utf8"; }
-
-    // Converts from type TextFile to CSV
-    block GTFSCSVInterpreter oftype CSVInterpreter {
+    // Parse the text file into a structured CSV format with defined delimiters
+    block GTFSCSVDataParser oftype CSVInterpreter {
         delimiter: ",";
         enclosing: '"';
     }
 
-    // Converts from CSV to Table and dropped unnecessary columns
-    block GTFSTableInterpreter oftype TableInterpreter {
+    // Map the CSV data to a structured table while validating and selecting specific columns
+    block GTFSDataMapper oftype TableInterpreter {
         header: true;
         columns: [
             "stop_id" oftype integer,
@@ -52,8 +51,8 @@ pipeline GTFSPipeline {
         ];
     }
 
-    // Load data into sqlite database
-    block GTFSLoader oftype SQLiteLoader {
+    // Load the processed table data into an SQLite database
+    block GTFSDatabaseLoader oftype SQLiteLoader {
         table: "stops";
         file: "./gtfs.sqlite";
     }
