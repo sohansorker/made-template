@@ -4,7 +4,7 @@
 The Role of Infrastructure in Economic Growth
 ## Main Question
 
-How the rate of road accident increasing day by day?
+
 
 1. How does electricity production (kWh per capita) correlate with economic growth (GDP growth) in Latin American countries from 2009 to 2014?
    
