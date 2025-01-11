@@ -6,7 +6,7 @@ The Role of Infrastructure in Economic Growth
 
 How the rate of road accident increasing day by day?
 
-1. How does electricity production (kWh per capita) correlate with economic growth (GDP growth) in Latin American countries from 2015 to 2021?
+1. How does electricity production (kWh per capita) correlate with economic growth (GDP growth) in Latin American countries from 2009 to 2014?
    
 
 2. What trends can be observed in electricity production and GDP growth for the selected Latin American countries during the study period, and are there any countries where changes in electricity production significantly impacted GDP growth?
