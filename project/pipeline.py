@@ -106,7 +106,7 @@ electricity_data_files = fetch_and_extract_data(electricity_production_url, data
 gdp_data_files = fetch_and_extract_data(gdp_growth_url, data_folder)
 
 # Define the years for analysis
-analysis_years = [str(year) for year in range(2015, 2022)]
+analysis_years = [str(year) for year in range(2009, 2015)]
 
 # Process and save the electricity production data
 if electricity_data_files:
