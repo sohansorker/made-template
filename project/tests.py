@@ -16,7 +16,7 @@ LATIN_AMERICAN_COUNTRIES = [
     "Ecuador", "El Salvador", "Guatemala", "Honduras", "Mexico", "Nicaragua", "Panama", "Paraguay", "Peru", 
     "Suriname", "Uruguay", "Venezuela"
 ]
-EXPECTED_YEARS = [str(year) for year in range(2015, 2022)]
+EXPECTED_YEARS = [str(year) for year in range(2009, 2015)]
 
 def test_pipeline_execution():
     """
